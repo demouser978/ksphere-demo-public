@@ -22,6 +22,10 @@ This demo is composed of 3 micro services:
 Dispatch is used to build and deploy these micro services.
 But there are 2 versions of the `map`micro service and when we modify the version, the new commit in the repo triggers an update of the micro service (through Dispatch).
 
+A recording of the demo is available here:
+
+[https://drive.google.com/open?id=1IorubmprAaz7pI84q_WaWRonh9a1MHmU](https://drive.google.com/open?id=1IorubmprAaz7pI84q_WaWRonh9a1MHmU)
+
 ## Prerequisites
 
 ### Client tools
