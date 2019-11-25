@@ -108,7 +108,7 @@ ip-10-0-194-105.us-west-2.compute.internal   Ready    master   3d    v1.15.5
 For the 2 github repos below:
 
 - [https://github.com/mesosphere/ksphere-demo](https://github.com/mesosphere/ksphere-demo)
-- [https://github.com/mesosphere/ksphere-demo-gitops](https://github.com/mesosphere/ksphere-demo-gitop)
+- [https://github.com/mesosphere/ksphere-demo-gitops](https://github.com/mesosphere/ksphere-demo-gitops)
 
 Then, pull the forks on you laptop using the commands below:
 
