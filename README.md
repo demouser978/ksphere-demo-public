@@ -305,19 +305,19 @@ cd ../ksphere-demo
 Deploy Dispatch on Konvoy:
 
 ```
-./dispatch init --watch-namespace=dispatch
+dispatch init --watch-namespace=dispatch
 ```
 
 Run the following commands to create all the credentials that Dispatch need:
 
 ```
-./dispatch login github --user ${username} --token ${token}
+dispatch login github --user ${username} --token ${token}
 rm -f dispatch.pem
 ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
-./dispatch login git ./dispatch.pem
+dispatch login git dispatch.pem
 docker login
-./dispatch login docker
-./dispatch gitops creds add https://github.com/${username}/ksphere-demo-gitops --username=${username} --password=${token}
+dispatch login docker
+dispatch gitops creds add https://github.com/${username}/ksphere-demo-gitops --username=${username} --password=${token}
 ```
 
 When executing the `docker login` command, it will ask you for your Docker hub credentials if you didn't login since some time.
@@ -325,15 +325,15 @@ When executing the `docker login` command, it will ask you for your Docker hub c
 Create the Github webhook on the `ksphere-demo` repo:
 
 ```
-./dispatch create repository
+dispatch create repository
 ```
 
 Create the 3 Argo CD apps corresponding to the 3 micro services:
 
 ```
-./dispatch gitops app create ksphere-demo-map --repo=https://github.com/${username}/ksphere-demo-gitops --path=map
-./dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${username}/ksphere-demo-gitops --path=flickr
-./dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${username}/ksphere-demo-gitops --path=photos
+dispatch gitops app create ksphere-demo-map --repo=https://github.com/${username}/ksphere-demo-gitops --path=map
+dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${username}/ksphere-demo-gitops --path=flickr
+dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${username}/ksphere-demo-gitops --path=photos
 ```
 
 ## Dispatch demo
