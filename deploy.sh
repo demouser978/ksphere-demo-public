@@ -18,7 +18,7 @@ until [ $(kubectl get pods --selector=kudo.dev/instance=kafka --field-selector=s
   kubectl get pods --selector=kudo.dev/instance=kafka
 done
 
-kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v0.1/resources/service-monitor.yaml
+kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.0/resources/service-monitor.yaml
 
 # Import the Grafana dashboard from https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v0.1/resources/grafana-dashboard.json
 
