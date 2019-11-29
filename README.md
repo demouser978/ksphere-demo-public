@@ -121,31 +121,28 @@ git clone https://github.com/<your github id>/ksphere-demo
 git clone https://github.com/<your github id>/ksphere-demo-gitops
 ```
 
-Finally, you need to get a Github personal access token.
+### Credentials
+
+You need to get a Github personal access token.
 
 If you don't know how to get a github personal access token, you can follow the instruction on the webpage below:
 
 [https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line)
 
+Set the following environment variables:
+
+```
+export GITHUB_USERNAME=<your Github id>
+export GITHUB_TOKEN=<your Github personal access token>
+export DOCKER_USERNAME=<your Docker hub id>
+export DOCKER_PASSWORD=<your Docker hub password>
+```
+
 ## Automated Deployment
-
-Go to the `ksphere-demo` directory and edit the `deploy.sh` file to indicate your github id and personal access token:
-
-```
-username=<your github id>
-token=<your github personal access token>
-```
 
 Run the `deploy.sh` script.
 
 ## Step by step deployment
-
-Set the variables below:
-
-```
-username=<your github id>
-token=<your github personal access token>
-```
 
 ### KUDO
 
@@ -315,13 +312,13 @@ dispatch init --watch-namespace=dispatch
 Run the following commands to create all the credentials that Dispatch need:
 
 ```
-dispatch login github --user ${username} --token ${token}
+dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN}
 rm -f dispatch.pem
 ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
 dispatch login git dispatch.pem
-docker login
+docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
 dispatch login docker
-dispatch gitops creds add https://github.com/${username}/ksphere-demo-gitops --username=${username} --password=${token}
+dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --password=${GITHUB_TOKEN}
 ```
 
 When executing the `docker login` command, it will ask you for your Docker hub credentials if you didn't login since some time.
@@ -335,9 +332,9 @@ dispatch create repository
 Create the 3 Argo CD apps corresponding to the 3 micro services:
 
 ```
-dispatch gitops app create ksphere-demo-map --repo=https://github.com/${username}/ksphere-demo-gitops --path=map
-dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${username}/ksphere-demo-gitops --path=flickr
-dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${username}/ksphere-demo-gitops --path=photos
+dispatch gitops app create ksphere-demo-map --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=map
+dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=flickr
+dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=photos
 ```
 
 ## Dispatch demo
@@ -492,7 +489,7 @@ As soon as the `PipelineRun` has been successfully executed, a Pull Request has 
 You can merge them from the Github UI or using the commands below:
 
 ```
-curl -XGET -H "Authorization: token $token" https://api.github.com/repos/$username/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
+curl -XGET -H "Authorization: token $token" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
   curl -XPUT -H "Authorization: token $token" $pr/merge
   sleep 5
 done
@@ -556,7 +553,7 @@ When it has completed, merge the corresponding Pull Request in your fork of the 
 You can merge it from the Github UI or using the commands below:
 
 ```
-curl -XGET -H "Authorization: token $token" https://api.github.com/repos/$username/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
+curl -XGET -H "Authorization: token $token" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
   curl -XPUT -H "Authorization: token $token" $pr/merge
   sleep 5
 done

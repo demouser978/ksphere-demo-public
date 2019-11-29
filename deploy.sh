@@ -1,6 +1,3 @@
-username=<your github id>
-token=<your github personal access token>
-
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 kubectl kudo init --wait
 
@@ -70,17 +67,17 @@ cd ../ksphere-demo
 #helm delete --purge dispatch
 #kubectl delete namespace dispatch
 dispatch init --watch-namespace=dispatch
-dispatch login github --user ${username} --token ${token}
+dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN}
 rm -f dispatch.pem
 ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
 dispatch login git dispatch.pem
 docker login
 dispatch login docker
 dispatch create repository
-dispatch gitops creds add https://github.com/${username}/ksphere-demo-gitops --username=${username} --password=${token}
-dispatch gitops app create ksphere-demo-map --repo=https://github.com/${username}/ksphere-demo-gitops --path=map
-dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${username}/ksphere-demo-gitops --path=flickr
-dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${username}/ksphere-demo-gitops --path=photos
+dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --password=${GITHUB_TOKEN}
+dispatch gitops app create ksphere-demo-map --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=map
+dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=flickr
+dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=photos
 
 # kubectl -n dispatch edit ingresses dispatch-tekton-dashboard and remove the auth annotations
 # kubectl -n dispatch edit ingresses dispatch-argo-cd and remove the auth annotations
