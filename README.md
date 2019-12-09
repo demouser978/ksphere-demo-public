@@ -30,7 +30,7 @@ A recording of the demo is available here:
 
 ### Client tools
 
-Download the Dispatch CLI version `0.3.0` (for either Linux or Mac) from the following page:
+Download the Dispatch CLI version `0.4.0` (for either Linux or Mac) from the following page:
 
 [https://github.com/mesosphere/dispatch/releases](https://github.com/mesosphere/dispatch/releases)
 
