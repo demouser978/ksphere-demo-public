@@ -312,12 +312,13 @@ dispatch init --watch-namespace=dispatch
 Run the following commands to create all the credentials that Dispatch need:
 
 ```
-dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN}
+dispatch serviceaccount create dispatch-sa
+dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN} --service-account dispatch-sa
 rm -f dispatch.pem
 ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
-dispatch login git dispatch.pem
+dispatch login git --private-key-path dispatch.pem --service-account dispatch-sa
 docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
-dispatch login docker
+dispatch login docker --service-account dispatch-sa
 dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --password=${GITHUB_TOKEN}
 ```
 
@@ -326,15 +327,15 @@ When executing the `docker login` command, it will ask you for your Docker hub c
 Create the Github webhook on the `ksphere-demo` repo:
 
 ```
-dispatch create repository
+dispatch create repository --service-account dispatch-sa
 ```
 
 Create the 3 Argo CD apps corresponding to the 3 micro services:
 
 ```
-dispatch gitops app create ksphere-demo-map --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=map
-dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=flickr
-dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=photos
+dispatch gitops app create ksphere-demo-map --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=map --service-account dispatch-sa
+dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=flickr --service-account dispatch-sa
+dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=photos --service-account dispatch-sa
 ```
 
 ## Dispatch demo
