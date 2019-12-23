@@ -1,3 +1,54 @@
+#!/usr/bin/env bash
+
+BASEDIR="$PWD"
+CURRENTSUB=${BASEDIR##*/}
+KSPHERE_DEMO_GITOPS_DIR='../ksphere-demo-gitops'
+
+# Check if the executable location is sane.
+if [ "$CURRENTSUB" != "ksphere-demo" ]; then
+  echo "Execute 'deploy.sh' only from ksphere-demo subdir!. Exiting."
+  exit 1
+fi
+
+if [ ! -d "$KSPHERE_DEMO_GITOPS_DIR" ]; then
+  echo "Directory $KSPHERE_DEMO_GITOPS_DIR DOES NOT exists. Exiting."
+  exit 1
+fi
+
+# Check if remote origin is bound via SSH
+if [[ "$(git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
+  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo' repo with HTTPS."
+  exit 1
+fi
+
+if [[ "$(cd $KSPHERE_DEMO_GITOPS_DIR && git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
+  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo-gitops' repo with HTTPS."
+  exit 1
+fi
+
+#Check if ENVs are properly set.
+if [[ -z "${GITHUB_USERNAME}" ]]; then
+  echo "ENV:GITHUB_USERNAME is not set, exiting. Please see documentation."
+  exit 1
+else
+  if [[ -z "${GITHUB_TOKEN}" ]]; then
+    echo "ENV:GITHUB_TOKEN is not set, exiting. Please see documentation."
+    exit 1
+  else
+    if [[ -z "${DOCKER_USERNAME}" ]]; then
+      echo "ENV:DOCKER_USERNAME is not set, exiting. Please see documentation."
+      exit 1
+    else
+      if [[ -z "${DOCKER_PASSWORD}" ]]; then
+        echo "ENV:DOCKER_PASSWORD is not set, exiting. Please see documentation."
+        exit 1
+      else
+        echo "Github '${GITHUB_USERNAME}' and Docker '${DOCKER_USERNAME}' credentials found."
+      fi
+    fi
+  fi
+fi
+
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 kubectl kudo init --wait
 
@@ -58,19 +109,19 @@ mc mb minio/images
 mc event add minio/images arn:minio:sqs::1:kafka --suffix .jpg
 mc event list minio/images
 
-cd ../ksphere-demo-gitops
+cd "${KSPHERE-DEMO-GITOPS-DIR}" || exit 1
 git commit -a -m "Updating the external Minio endpoint"
 git push
-cd ../ksphere-demo
+cd "${BASEDIR}" || exit 1
 
 #helm delete --purge dispatch
 #kubectl delete namespace dispatch
 dispatch init --watch-namespace=dispatch
 dispatch serviceaccount create dispatch-sa
 dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN} --service-account dispatch-sa
-rm -f dispatch.pem
-ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
-dispatch login git --private-key-path dispatch.pem --service-account dispatch-sa
+rm -f ./dispatch.pem
+ssh-keygen -t ed25519 -f ./dispatch.pem -q -N ""
+dispatch login git --private-key-path ./dispatch.pem --service-account dispatch-sa
 docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
 dispatch login docker --service-account dispatch-sa
 dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --token=${GITHUB_TOKEN}
