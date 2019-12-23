@@ -20,7 +20,7 @@ This demo is composed of 3 micro services:
 - the `map` micro service that reads the information from Cassandra and display the pictures in a map.
 
 Dispatch is used to build and deploy these micro services.
-But there are 2 versions of the `map`micro service and when we modify the version, the new commit in the repo triggers an update of the micro service (through Dispatch).
+But there are 2 versions of the `map` micro service and when we modify the version, the new commit in the repo triggers an update of the micro service (through Dispatch).
 
 A recording of the demo is available here:
 
@@ -84,9 +84,9 @@ Add an AWS `Cloud Provider`.
 
 ### Konvoy
 
-Then, deploy a Konvoy cluster on AWS from Kommander, with 10 workers of the default instance type (`t3.xlarge`). You can also deploy a Konvoy cluster using the CLI and add it on Kommander. Currently, the demo doesn't leverage any Kommander feature.
+Then, deploy a Konvoy cluster on AWS from Kommander, with 10 workers of the default instance type (`t3.xlarge`). You can also deploy a Konvoy cluster using the CLI and add it on Kommander. Currently, the demo doesn't leverage any Kommander features.
 
-When the Konvoy cluster is ready, click on `Download kubeconfig` and replace the content of your `~/.kube/config` file with the content of the file you've just downloaded.
+When the Konvoy cluster is ready, from the Konvoy UI, click on `Download kubeconfig` and replace the content of your `~/.kube/config` file with the content of the file you've just downloaded.
 
 Check that you can access your Konvoy cluster by executing the command below:
 
@@ -286,7 +286,7 @@ until nslookup $(kubectl get svc minio-service --output jsonpath={.status.loadBa
 done
 ```
 
-Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `jpg` extension are added to the bucket:
+Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `.jpg` extension are added to the bucket:
 
 ```
 mc config host add minio http://$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}):9000 minio minio123
