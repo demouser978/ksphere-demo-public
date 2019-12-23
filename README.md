@@ -30,7 +30,7 @@ A recording of the demo is available here:
 
 ### Client tools
 
-Download the Dispatch CLI version `0.4.0` (for either Linux or Mac) from the following page:
+Download the Dispatch CLI version `0.4.1` (for either Linux or Mac) from the following page:
 
 [https://github.com/mesosphere/dispatch/releases](https://github.com/mesosphere/dispatch/releases)
 
@@ -48,11 +48,17 @@ Install the KUDO CLI (on Mac):
 brew install kudo-cli
 ```
 
+If you have previously installed it, update it:
+
+```
+brew upgrade kudo-cli
+```
+
 Install the KUDO CLI (on Linux):
 
 ```
-wget https://github.com/kudobuilder/kudo/releases/download/v0.8.0/kubectl-kudo_0.8.0_linux_x86_64
-sudo mv kubectl-kudo_0.8.0_linux_x86_64 /usr/local/bin/kubectl-kudo
+wget https://github.com/kudobuilder/kudo/releases/download/v0.9.0/kubectl-kudo_0.9.0_linux_x86_64
+sudo mv kubectl-kudo_0.9.0_linux_x86_64 /usr/local/bin/kubectl-kudo
 chmod +x /usr/local/bin/kubectl-kudo
 ```
 
@@ -152,7 +158,7 @@ Uninstall the current version of KUDO deployed on Konvoy:
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 ```
 
-Install KUDO 0.8.0:
+Install KUDO 0.9.0:
 
 ```
 kubectl kudo init --wait
@@ -163,7 +169,7 @@ kubectl kudo init --wait
 Deploy KUDO Zookeeper:
 
 ```
-kubectl kudo install zookeeper --instance=zk
+kubectl kudo install zookeeper --instance=zk --version=0.2.0
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -196,7 +202,7 @@ Plan(s) for "zk" in namespace "default":
 Deploy KUDO Kafka:
 
 ```
-kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --version=1.0.0
+kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --version=1.1.0
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -210,20 +216,24 @@ Wait until the `deploy` plan is `COMPLETE` as follow:
 ```
 Plan(s) for "kafka" in namespace "default":
 .
-└── kafka (Operator-Version: "kafka-1.0.0" Active-Plan: "deploy")
-    ├── Plan deploy (serial strategy) [COMPLETE]
-    │   └── Phase deploy-kafka [COMPLETE]
-    │       └── Step deploy (COMPLETE)
-    └── Plan not-allowed (serial strategy) [NOT ACTIVE]
-        └── Phase not-allowed (serial strategy) [NOT ACTIVE]
-            └── Step not-allowed (serial strategy) [NOT ACTIVE]
-                └── not-allowed [NOT ACTIVE]
+└── kafka (Operator-Version: "kafka-1.1.0" Active-Plan: "deploy")
+    ├── Plan mirrormaker (serial strategy) [NOT ACTIVE]
+    │   └── Phase deploy-mirror-maker (serial strategy) [NOT ACTIVE]
+    │       └── Step deploy-mirror-maker (serial strategy) [NOT ACTIVE]
+    │           └── deploy [NOT ACTIVE]
+    ├── Plan not-allowed (serial strategy) [NOT ACTIVE]
+    │   └── Phase not-allowed (serial strategy) [NOT ACTIVE]
+    │       └── Step not-allowed (serial strategy) [NOT ACTIVE]
+    │           └── not-allowed [NOT ACTIVE]
+    └── Plan deploy (serial strategy) [COMPLETE]
+        └── Phase deploy-kafka [COMPLETE]
+            └── Step deploy [COMPLETE]
 ```
 
 Run the following command to enable Kafka metrics export:
 
 ```
-kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.0/resources/service-monitor.yaml
+kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/service-monitor.yaml
 ```
 
 ### KUDO Cassandra
@@ -231,7 +241,7 @@ kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master
 Deploy KUDO Cassandra:
 
 ```
-kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.0
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.1
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -245,10 +255,10 @@ Wait until the `deploy` plan is `COMPLETE` as follow:
 ```
 Plan(s) for "cassandra" in namespace "default":
 .
-└── cassandra (Operator-Version: "cassandra-0.1.0" Active-Plan: "deploy")
+└── cassandra (Operator-Version: "cassandra-0.1.1" Active-Plan: "deploy")
     └── Plan deploy (serial strategy) [COMPLETE]
         └── Phase nodes [COMPLETE]
-            └── Step node (COMPLETE)
+            └── Step node [COMPLETE]
 ```
 
 ### Minio
@@ -280,8 +290,7 @@ Run the following commands to create a Bucket and to configure Minio to publish 
 
 ```
 mc config host add minio http://$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}):9000 minio minio123
-mc admin config get minio/ | jq '.notify.kafka."1".topic="minio"' | jq '.notify.kafka."1".brokers=["kafka-kafka-0.kafka-svc:9092"]' | jq '.notify.kafka."1".enable=true' > minio.json
-mc admin config set minio < minio.json
+mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
 sleep 10
 mc mb minio/images
@@ -319,7 +328,7 @@ ssh-keygen -t ed25519 -f dispatch.pem -q -N ""
 dispatch login git --private-key-path dispatch.pem --service-account dispatch-sa
 docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
 dispatch login docker --service-account dispatch-sa
-dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --password=${GITHUB_TOKEN}
+dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --token=${GITHUB_TOKEN}
 ```
 
 When executing the `docker login` command, it will ask you for your Docker hub credentials if you didn't login since some time.
@@ -490,8 +499,8 @@ As soon as the `PipelineRun` has been successfully executed, a Pull Request has 
 You can merge them from the Github UI or using the commands below:
 
 ```
-curl -XGET -H "Authorization: token $token" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
-  curl -XPUT -H "Authorization: token $token" $pr/merge
+curl -XGET -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
+  curl -XPUT -H "Authorization: token ${GITHUB_TOKEN}" $pr/merge
   sleep 5
 done
 ```
@@ -554,8 +563,8 @@ When it has completed, merge the corresponding Pull Request in your fork of the 
 You can merge it from the Github UI or using the commands below:
 
 ```
-curl -XGET -H "Authorization: token $token" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
-  curl -XPUT -H "Authorization: token $token" $pr/merge
+curl -XGET -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
+  curl -XPUT -H "Authorization: token ${GITHUB_TOKEN}" $pr/merge
   sleep 5
 done
 ```
