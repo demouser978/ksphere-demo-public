@@ -292,8 +292,6 @@ until  [[ -n $minio_host ]] ; do
 done
 echo "Minio host is |${minio_host}|"
 
-# until [[ $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}) ]]; do sleep 1; done
-
 until nslookup ${minio_host}; do sleep 5; done
 ```
 
@@ -366,7 +364,7 @@ You're now ready to demonstrate how Dispatch work.
 You can run the following command to determine the URL of the Argo CD UI:
 
 ```
-read -r tmphost tmpip <<<$(kubectl get svc traefik-kubeaddons -n kubeaddons --output go-template --template '{{range .status.loadBalancer.ingress }} {{.hostname}} {{or .ip ""}} {{end}}')
+read -r tmphost tmpip <<<$(kubectl get svc traefik-kubeaddons -n kubeaddons --output go-template --template '{{range .status.loadBalancer.ingress }} {{or .hostname ""}} {{or .ip ""}} {{end}}')
 traefik_host=${tmphost:-$ip}
 echo https://${traefik_host}/dispatch/argo-cd/
 ```
