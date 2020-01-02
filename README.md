@@ -325,7 +325,7 @@ mc event add minio/images arn:minio:sqs::1:kafka --suffix .jpg
 mc event list minio/images
 ```
 
-Run the following commands to update the gitops repo with the DNS name of the load balancer created for the Minio Service:
+Run the following commands to update the gitops repo with the address of the load balancer created for the Minio Service:
 
 ```
 sed "s/MINIOEXTERNALENDPOINT/${minio_host}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
