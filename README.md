@@ -28,6 +28,23 @@ A recording of the demo is available here:
 
 ## Prerequisites
 
+### Required script tools
+
+Netcat (nc) for testing availability of load balancer services and JSON query (jq) for JSON manipulation
+
+On Mac
+```sh
+brew install netcat jq
+```
+
+On Linux
+```sh
+## Debian/Ubuntu
+sudo apt install netcat jq
+## Red Hat/Centos
+sudo yum install nc jq
+```
+
 ### Client tools
 
 Download the Dispatch CLI version `0.4.1` (for either Linux or Mac) from the following page:
@@ -292,7 +309,8 @@ until  [[ -n $minio_host ]] ; do
 done
 echo "Minio host is |${minio_host}|"
 
-until nslookup ${minio_host}; do sleep 5; done
+echo "Waiting for Minio load balancer to become available"
+until nc -z -w 1 ${minio_host} 9000 2>/dev/null; do sleep 3; echo -n .; done
 ```
 
 Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `.jpg` extension are added to the bucket:
