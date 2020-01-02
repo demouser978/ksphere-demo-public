@@ -263,10 +263,15 @@ Plan(s) for "cassandra" in namespace "default":
 
 ### Minio
 
+Install the Minio operator
+```
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
+```
+
 Deploy a Minio cluster using the Operator already installed on Konvoy:
 
 ```
-kubectl create -f "https://github.com/minio/minio-operator/blob/master/examples/minioinstance-with-external-service.yaml?raw=true"
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/examples/minioinstance-with-external-service.yaml"
 ```
 
 Modify the Minio Service Type to allow external access:
