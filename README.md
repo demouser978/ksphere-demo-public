@@ -284,17 +284,23 @@ kubectl replace -f minio-service.yaml
 Run the following commands to wait until the DNS name of the load balancer created for the Minio Service becomes resolvable:
 
 ```
-until [[ $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}) ]]; do sleep 1; done
-
-until nslookup $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}); do
-  sleep 1
+tmpip="" ; tmphost=""; minio_host=""
+until  [[ -n $minio_host ]] ; do
+	read -r tmphost tmpip <<<$(kubectl get svc minio-service --output go-template --template '{{range .status.loadBalancer.ingress }} {{or .hostname ""}} {{or .ip ""}} {{end}}')
+	minio_host=${tmphost:-$tmpip}
+	if [[ -z ${minio_host} ]] ; then sleep 1 ; fi
 done
+echo "Minio host is |${minio_host}|"
+
+# until [[ $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}) ]]; do sleep 1; done
+
+until nslookup ${minio_host}; do sleep 5; done
 ```
 
 Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `.jpg` extension are added to the bucket:
 
 ```
-mc config host add minio http://$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}):9000 minio minio123
+mc config host add minio http://$minio_host:9000 minio minio123
 mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
 sleep 10
@@ -306,8 +312,7 @@ mc event list minio/images
 Run the following commands to update the gitops repo with the DNS name of the load balancer created for the Minio Service:
 
 ```
-minio=$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname})
-sed "s/MINIOEXTERNALENDPOINT/${minio}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
+sed "s/MINIOEXTERNALENDPOINT/${minio_host}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
 mv ./application.yaml.tmpl ../ksphere-demo-gitops/photos/application.yaml.tmpl
 cd ../ksphere-demo-gitops
 git commit -a -m "Updating the external Minio endpoint"
@@ -361,7 +366,9 @@ You're now ready to demonstrate how Dispatch work.
 You can run the following command to determine the URL of the Argo CD UI:
 
 ```
-echo https://$(kubectl -n kubeaddons get svc traefik-kubeaddons --output jsonpath={.status.loadBalancer.ingress[*].hostname})/dispatch/argo-cd/
+read -r tmphost tmpip <<<$(kubectl get svc traefik-kubeaddons -n kubeaddons --output go-template --template '{{range .status.loadBalancer.ingress }} {{.hostname}} {{or .ip ""}} {{end}}')
+traefik_host=${tmphost:-$ip}
+echo https://${traefik_host}/dispatch/argo-cd/
 ```
 
 Go to the Argo CD UI and you'll see the 3 apps corresponding to the micro services:
@@ -490,7 +497,7 @@ git push
 You can run the following command to determine the URL of the Tekton UI:
 
 ```
-echo https://$(kubectl -n kubeaddons get svc traefik-kubeaddons --output jsonpath={.status.loadBalancer.ingress[*].hostname})/dispatch/tekton/
+echo https://${traefik_host}/dispatch/tekton/
 ```
 
 Go to the Tekton UI and you'll see that a `PipelineRun` has been triggered:
@@ -534,7 +541,7 @@ ksphere-demo-photos-c6ff6b58d-8zs4j    1/1     Running   1          5m55s
 You can run the following command to determine the URL of the web app:
 
 ```
-echo https://$(kubectl -n kubeaddons get svc traefik-kubeaddons --output jsonpath={.status.loadBalancer.ingress[*].hostname})/ksphere-demo-map
+echo https://${traefik_host}/ksphere-demo-map
 ```
 
 The icons corresponding to the pictures of the sunset are displayed in the map with the number of views indicated:
