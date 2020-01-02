@@ -298,7 +298,7 @@ kubectl get svc minio-service -o yaml | sed 's/ClusterIP/LoadBalancer/' > minio-
 kubectl replace -f minio-service.yaml
 ```
 
-Run the following commands to wait until the DNS name of the load balancer created for the Minio Service becomes resolvable:
+Run the following commands to wait until the load balancer created for the Minio service becomes available at port 9000:
 
 ```
 tmpip="" ; tmphost=""; minio_host=""
@@ -316,7 +316,7 @@ until nc -z -w 1 ${minio_host} 9000 2>/dev/null; do sleep 3; echo -n .; done
 Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `.jpg` extension are added to the bucket:
 
 ```
-mc config host add minio http://$minio_host:9000 minio minio123
+mc config host add minio http://${minio_host}:9000 minio minio123
 mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
 sleep 10
