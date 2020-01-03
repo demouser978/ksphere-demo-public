@@ -117,7 +117,7 @@ mc event list minio/images
 
 sed "s/MINIOEXTERNALENDPOINT/${minio_host}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
 mv ./application.yaml.tmpl ../ksphere-demo-gitops/photos/application.yaml.tmpl
-cd "${KSPHERE-DEMO-GITOPS-DIR}" || exit 1
+cd "${KSPHERE_DEMO_GITOPS_DIR}" || exit 1
 git commit -a -m "Updating the external Minio endpoint"
 git push
 cd "${BASEDIR}" || exit 1
