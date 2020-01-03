@@ -68,22 +68,26 @@ done
 
 kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/service-monitor.yaml
 
+# Cassandra
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.1
+
+until [ $(kubectl get pods --selector=kudo.dev/instance=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+  sleep 1
+  kubectl get pods --selector=kudo.dev/instance=cassandra
+done
 # Import the Grafana dashboard from https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/grafana-dashboard.json
 
-kubectl create -f "https://github.com/minio/minio-operator/blob/master/examples/minioinstance-with-external-service.yaml?raw=true"
+# Install the Minio operator
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
+# Deploy the minio cluster
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/examples/minioinstance-with-external-service.yaml"
 
 until [ $(kubectl get pods --selector=app=minio --field-selector=status.phase=Running | grep -v NAME -c) -eq 4 ]; do
   sleep 1
   kubectl get pods --selector=app=minio
 done
 
-kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.0
-
-until [ $(kubectl get pods --selector=kudo.dev/instance=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
-  sleep 1
-  kubectl get pods --selector=kudo.dev/instance=cassandra
-done
-
+# Minio
 # brew install minio/stable/mc
 
 kubectl get svc minio-service -o yaml | sed 's/ClusterIP/LoadBalancer/' > minio-service.yaml
@@ -91,29 +95,34 @@ kubectl replace -f minio-service.yaml
 
 until [[ $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}) ]]; do sleep 1; done
 
-until nslookup $(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}); do
-  sleep 1
+## Wait until Minio LB is available at port 9000
+tmpip="" ; tmphost=""; minio_host=""
+until  [[ -n $minio_host ]] ; do
+	read -r tmphost tmpip <<<$(kubectl get svc minio-service --output go-template --template '{{range .status.loadBalancer.ingress }} {{or .hostname ""}} {{or .ip ""}} {{end}}')
+	minio_host=${tmphost:-$tmpip}
+	if [[ -z ${minio_host} ]] ; then sleep 1 ; fi
 done
+echo "Minio host is |${minio_host}|"
 
-mc config host add minio http://$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname}):9000 minio minio123
+echo "Waiting for Minio load balancer to become available"
+until nc -z -w 1 ${minio_host} 9000 2>/dev/null; do sleep 3; echo -n .; done
+
+mc config host add minio http://$minio_host:9000 minio minio123
 mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
-
-minio=$(kubectl get svc minio-service --output jsonpath={.status.loadBalancer.ingress[*].hostname})
-sed "s/MINIOEXTERNALENDPOINT/${minio}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
-mv ./application.yaml.tmpl ../ksphere-demo-gitops/photos/application.yaml.tmpl
-
 sleep 10
-
 mc mb minio/images
 mc event add minio/images arn:minio:sqs::1:kafka --suffix .jpg
 mc event list minio/images
 
+sed "s/MINIOEXTERNALENDPOINT/${minio_host}/" ../ksphere-demo-gitops/photos/application.yaml.tmpl > ./application.yaml.tmpl
+mv ./application.yaml.tmpl ../ksphere-demo-gitops/photos/application.yaml.tmpl
 cd "${KSPHERE-DEMO-GITOPS-DIR}" || exit 1
 git commit -a -m "Updating the external Minio endpoint"
 git push
 cd "${BASEDIR}" || exit 1
 
+# Dispatch 
 #helm delete --purge dispatch
 #kubectl delete namespace dispatch
 dispatch init --watch-namespace=dispatch
