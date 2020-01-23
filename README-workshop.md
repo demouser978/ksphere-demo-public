@@ -11,7 +11,7 @@ The goal of the Ksphere demo is to highlight the benefits of all the D2iQ Kspher
 
 The demo will continue to evolve in conjunction with the new features that will be implemented in the Ksphere product line (Local repository, Service Mesh, ...).
 
-![Ksphere demo](images/ksphere-demo.png)
+![Ksphere demo](images/ksphere-demo-workshop.png)
 
 This demo is composed of 3 micro services:
 
