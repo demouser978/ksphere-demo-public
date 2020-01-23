@@ -52,30 +52,29 @@ fi
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 kubectl kudo init --wait
 
-kubectl kudo install zookeeper --instance=zk --version=0.2.0
+kubectl kudo install zookeeper --instance=zk --operator-version=0.2.0
 
-until [ $(kubectl get pods --selector=kudo.dev/instance=zk --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+until [ $(kubectl get pods --selector=app=zookeeper --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
   sleep 1
-  kubectl get pods --selector=kudo.dev/instance=zk
+  kubectl get pods --selector=app=zookeeper
 done
 
-kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --version=1.1.0
+kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --operator-version=1.2.0
 
-until [ $(kubectl get pods --selector=kudo.dev/instance=kafka --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+until [ $(kubectl get pods --selector=app=kafka --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
   sleep 1
-  kubectl get pods --selector=kudo.dev/instance=kafka
+  kubectl get pods --selector=app=kafka
 done
 
 kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/service-monitor.yaml
 
 # Cassandra
-kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.1
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true --operator-version=0.1.2
 
-until [ $(kubectl get pods --selector=kudo.dev/instance=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+until [ $(kubectl get pods --selector=app=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
   sleep 1
-  kubectl get pods --selector=kudo.dev/instance=cassandra
+  kubectl get pods --selector=app=cassandra
 done
-# Import the Grafana dashboard from https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/grafana-dashboard.json
 
 # Install the Minio operator
 kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
@@ -86,9 +85,6 @@ until [ $(kubectl get pods --selector=app=minio --field-selector=status.phase=Ru
   sleep 1
   kubectl get pods --selector=app=minio
 done
-
-# Minio
-# brew install minio/stable/mc
 
 kubectl get svc minio-service -o yaml | sed 's/ClusterIP/LoadBalancer/' > minio-service.yaml
 kubectl replace -f minio-service.yaml
@@ -107,6 +103,15 @@ echo "Minio host is |${minio_host}|"
 echo "Waiting for Minio load balancer to become available"
 until nc -z -w 1 ${minio_host} 9000 2>/dev/null; do sleep 3; echo -n .; done
 
+until nslookup ${minio_host}; do
+  sleep 1
+done
+
+until [ $(kubectl get pods -l app=minio -o jsonpath='{range .items[*].status.containerStatuses[*]}{.ready}{"\n"}{end}' | grep true -c) -eq 4 ]; do
+  echo "Waiting for all the Minio pods to become ready"
+  sleep 1
+done
+
 mc config host add minio http://$minio_host:9000 minio minio123
 mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
@@ -122,10 +127,8 @@ git commit -a -m "Updating the external Minio endpoint"
 git push
 cd "${BASEDIR}" || exit 1
 
-# Dispatch 
-#helm delete --purge dispatch
-#kubectl delete namespace dispatch
-dispatch init --watch-namespace=dispatch
+# Dispatch
+dispatch init --set global.prometheus.enabled=true --set global.prometheus.release=prometheus-kubeaddons --watch-namespace=dispatch
 dispatch serviceaccount create dispatch-sa
 dispatch login github --user ${GITHUB_USERNAME} --token ${GITHUB_TOKEN} --service-account dispatch-sa
 rm -f ./dispatch.pem
@@ -138,6 +141,3 @@ dispatch create repository --service-account dispatch-sa
 dispatch gitops app create ksphere-demo-map --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=map --service-account dispatch-sa
 dispatch gitops app create ksphere-demo-flickr --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=flickr --service-account dispatch-sa
 dispatch gitops app create ksphere-demo-photos --repo=https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --path=photos --service-account dispatch-sa
-
-# kubectl -n dispatch edit ingresses dispatch-tekton-dashboard and remove the auth annotations
-# kubectl -n dispatch edit ingresses dispatch-argo-cd and remove the auth annotations

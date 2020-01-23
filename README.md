@@ -47,7 +47,7 @@ sudo yum install nc jq
 
 ### Client tools
 
-Download the Dispatch CLI version `0.4.1` (for either Linux or Mac) from the following page:
+Download the Dispatch CLI version `0.4.4` (for either Linux or Mac) from the following page:
 
 [https://github.com/mesosphere/dispatch/releases](https://github.com/mesosphere/dispatch/releases)
 
@@ -62,20 +62,23 @@ chmod +x /usr/local/bin/dispatch
 Install the KUDO CLI (on Mac):
 
 ```
+brew tap kudobuilder/tap
 brew install kudo-cli
 ```
 
 If you have previously installed it, update it:
 
 ```
+rm -f ~/.kudo/repository/repositories.yaml
 brew upgrade kudo-cli
 ```
 
 Install the KUDO CLI (on Linux):
 
 ```
-wget https://github.com/kudobuilder/kudo/releases/download/v0.9.0/kubectl-kudo_0.9.0_linux_x86_64
-sudo mv kubectl-kudo_0.9.0_linux_x86_64 /usr/local/bin/kubectl-kudo
+rm -f ~/.kudo/repository/repositories.yaml
+wget https://github.com/kudobuilder/kudo/releases/download/v0.10.0/kubectl-kudo_0.10.0_linux_x86_64
+sudo mv kubectl-kudo_0.10.0_linux_x86_64 /usr/local/bin/kubectl-kudo
 chmod +x /usr/local/bin/kubectl-kudo
 ```
 
@@ -101,7 +104,7 @@ Add an AWS `Cloud Provider`.
 
 ### Konvoy
 
-Then, deploy a Konvoy cluster on AWS from Kommander, with 10 workers of the default instance type (`t3.xlarge`). You can also deploy a Konvoy cluster using the CLI and add it on Kommander. Currently, the demo doesn't leverage any Kommander features.
+Then, deploy a Konvoy cluster (version `1.3.0`) on AWS using the CLI.
 
 When the Konvoy cluster is ready, from the Konvoy UI, click on `Download kubeconfig` and replace the content of your `~/.kube/config` file with the content of the file you've just downloaded.
 
@@ -115,19 +118,13 @@ The output should be similar to:
 
 ```
 NAME                                         STATUS   ROLES    AGE   VERSION
-ip-10-0-128-109.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-128-127.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-128-5.us-west-2.compute.internal     Ready    <none>   3d    v1.15.5
-ip-10-0-129-127.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-129-142.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-129-23.us-west-2.compute.internal    Ready    <none>   3d    v1.15.5
-ip-10-0-130-171.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-130-209.us-west-2.compute.internal   Ready    <none>   3d    v1.15.5
-ip-10-0-130-3.us-west-2.compute.internal     Ready    <none>   3d    v1.15.5
-ip-10-0-130-89.us-west-2.compute.internal    Ready    <none>   3d    v1.15.5
-ip-10-0-193-222.us-west-2.compute.internal   Ready    master   3d    v1.15.5
-ip-10-0-193-69.us-west-2.compute.internal    Ready    master   3d    v1.15.5
-ip-10-0-194-105.us-west-2.compute.internal   Ready    master   3d    v1.15.5
+ip-10-0-128-142.us-west-2.compute.internal   Ready    <none>   15h   v1.16.4
+ip-10-0-128-65.us-west-2.compute.internal    Ready    <none>   15h   v1.16.4
+ip-10-0-129-96.us-west-2.compute.internal    Ready    <none>   15h   v1.16.4
+ip-10-0-130-117.us-west-2.compute.internal   Ready    <none>   15h   v1.16.4
+ip-10-0-193-64.us-west-2.compute.internal    Ready    master   15h   v1.16.4
+ip-10-0-194-121.us-west-2.compute.internal   Ready    master   15h   v1.16.4
+ip-10-0-195-208.us-west-2.compute.internal   Ready    master   15h   v1.16.4
 ```
 
 ### Github
@@ -175,7 +172,7 @@ Uninstall the current version of KUDO deployed on Konvoy:
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 ```
 
-Install KUDO 0.9.0:
+Install KUDO 0.10.0:
 
 ```
 kubectl kudo init --wait
@@ -186,7 +183,7 @@ kubectl kudo init --wait
 Deploy KUDO Zookeeper:
 
 ```
-kubectl kudo install zookeeper --instance=zk --version=0.2.0
+kubectl kudo install zookeeper --instance=zk --operator-version=0.2.0
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -202,16 +199,15 @@ Plan(s) for "zk" in namespace "default":
 .
 └── zk (Operator-Version: "zookeeper-0.2.0" Active-Plan: "deploy")
     ├── Plan deploy (serial strategy) [COMPLETE]
-    │   ├── Phase zookeeper [COMPLETE]
-    │   │   └── Step deploy (COMPLETE)
-    │   └── Phase validation [COMPLETE]
-    │       ├── Step validation (COMPLETE)
-    │       └── Step cleanup (COMPLETE)
+    │   ├── Phase zookeeper (parallel strategy) [COMPLETE]
+    │   │   └── Step deploy [COMPLETE]
+    │   └── Phase validation (serial strategy) [COMPLETE]
+    │       ├── Step validation [COMPLETE]
+    │       └── Step cleanup [COMPLETE]
     └── Plan validation (serial strategy) [NOT ACTIVE]
         └── Phase connection (serial strategy) [NOT ACTIVE]
-            └── Step connection (serial strategy) [NOT ACTIVE]
-                ├── connection [NOT ACTIVE]
-                └── cleanup [NOT ACTIVE]
+            ├── Step connection [NOT ACTIVE]
+            └── Step cleanup [NOT ACTIVE]
 ```
 
 ### KUDO Kafka
@@ -219,7 +215,7 @@ Plan(s) for "zk" in namespace "default":
 Deploy KUDO Kafka:
 
 ```
-kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --version=1.1.0
+kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --operator-version=1.2.0
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -233,18 +229,16 @@ Wait until the `deploy` plan is `COMPLETE` as follow:
 ```
 Plan(s) for "kafka" in namespace "default":
 .
-└── kafka (Operator-Version: "kafka-1.1.0" Active-Plan: "deploy")
+└── kafka (Operator-Version: "kafka-1.2.0" Active-Plan: "deploy")
+    ├── Plan deploy (serial strategy) [COMPLETE]
+    │   └── Phase deploy-kafka (serial strategy) [COMPLETE]
+    │       └── Step deploy [COMPLETE]
     ├── Plan mirrormaker (serial strategy) [NOT ACTIVE]
     │   └── Phase deploy-mirror-maker (serial strategy) [NOT ACTIVE]
-    │       └── Step deploy-mirror-maker (serial strategy) [NOT ACTIVE]
-    │           └── deploy [NOT ACTIVE]
-    ├── Plan not-allowed (serial strategy) [NOT ACTIVE]
-    │   └── Phase not-allowed (serial strategy) [NOT ACTIVE]
-    │       └── Step not-allowed (serial strategy) [NOT ACTIVE]
-    │           └── not-allowed [NOT ACTIVE]
-    └── Plan deploy (serial strategy) [COMPLETE]
-        └── Phase deploy-kafka [COMPLETE]
-            └── Step deploy [COMPLETE]
+    │       └── Step deploy [NOT ACTIVE]
+    └── Plan not-allowed (serial strategy) [NOT ACTIVE]
+        └── Phase not-allowed (serial strategy) [NOT ACTIVE]
+            └── Step not-allowed [NOT ACTIVE]
 ```
 
 Run the following command to enable Kafka metrics export:
@@ -258,7 +252,7 @@ kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master
 Deploy KUDO Cassandra:
 
 ```
-kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 --version=0.1.1
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true --operator-version=0.1.2
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -272,10 +266,10 @@ Wait until the `deploy` plan is `COMPLETE` as follow:
 ```
 Plan(s) for "cassandra" in namespace "default":
 .
-└── cassandra (Operator-Version: "cassandra-0.1.1" Active-Plan: "deploy")
-    └── Plan deploy (serial strategy) [COMPLETE]
-        └── Phase nodes [COMPLETE]
-            └── Step node [COMPLETE]
+└── cassandra (Operator-Version: "cassandra-0.1.2" Active-Plan: "deploy")
+    └── Plan deploy (serial strategy) [IN_PROGRESS]
+        └── Phase nodes (parallel strategy) [IN_PROGRESS]
+            └── Step node [IN_PROGRESS]
 ```
 
 ### Minio
@@ -285,7 +279,7 @@ Install the Minio operator
 kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
 ```
 
-Deploy a Minio cluster using the Operator already installed on Konvoy:
+Deploy a Minio cluster using the Operator:
 
 ```
 kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/examples/minioinstance-with-external-service.yaml"
@@ -311,6 +305,15 @@ echo "Minio host is |${minio_host}|"
 
 echo "Waiting for Minio load balancer to become available"
 until nc -z -w 1 ${minio_host} 9000 2>/dev/null; do sleep 3; echo -n .; done
+
+until nslookup ${minio_host}; do
+  sleep 1
+done
+
+until [ $(kubectl get pods -l app=minio -o jsonpath='{range .items[*].status.containerStatuses[*]}{.ready}{"\n"}{end}' | grep true -c) -eq 4 ]; do
+  echo "Waiting for all the Minio pods to become ready"
+  sleep 1
+done
 ```
 
 Run the following commands to create a Bucket and to configure Minio to publish messages in Kafka when objects with a `.jpg` extension are added to the bucket:
@@ -341,7 +344,8 @@ cd ../ksphere-demo
 Deploy Dispatch on Konvoy:
 
 ```
-dispatch init --watch-namespace=dispatch
+dispatch init --set global.prometheus.enabled=true --set global.prometheus.release=prometheus-kubeaddons --watch-namespace=dispatch
+
 ```
 
 Run the following commands to create all the credentials that Dispatch need:
@@ -356,8 +360,6 @@ docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
 dispatch login docker --service-account dispatch-sa
 dispatch gitops creds add https://github.com/${GITHUB_USERNAME}/ksphere-demo-gitops --username=${GITHUB_USERNAME} --token=${GITHUB_TOKEN}
 ```
-
-When executing the `docker login` command, it will ask you for your Docker hub credentials if you didn't login since some time.
 
 Create the Github webhook on the `ksphere-demo` repo:
 
@@ -605,8 +607,36 @@ When it has completed, refresh the web app:
 
 Far better, no ?
 
+### monitoring
+
+Open Grafana and click on the `+` sign on the left and select `Import`.
+
+Then, click on `Upload .json file` and select the `grafana-kafka.json` file.
+
+![Grafana Prometheus](images/grafana-prometheus.png)
+
+Select the `Prometheus` value of the `Prometheus` field and click on `Import`.
+
+![Grafana Kafka](images/grafana-kafka.png)
+
+You can see all the Kafka metrics.
+
+Follow the same steps to import the following files:
+
+- grafana-cassandra.json
+
+![Grafana Cassandra](images/grafana-cassandra.png)
+
+- grafana-argocd.json
+
+![Grafana Argo CD](images/grafana-argocd.png)
+
+- grafana-cloudbuild.json
+
+![Grafana Cloudbuild](images/grafana-cloudbuild.png)
+
 ## Cleanup
 
-Delete your Konvoy and Kommander clusters.
+Delete your Konvoy cluster.
 
 Delete your forks of the `ksphere-demo` and `ksphere-demo-gitops` repos.
