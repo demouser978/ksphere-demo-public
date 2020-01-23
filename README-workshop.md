@@ -127,6 +127,96 @@ ip-10-0-194-121.us-west-2.compute.internal   Ready    master   15h   v1.16.4
 ip-10-0-195-208.us-west-2.compute.internal   Ready    master   15h   v1.16.4
 ```
 
+### Portworx
+
+Set the following environment variables:
+
+```bash
+export CLUSTER=$(grep -m 1 tags.kubernetes.io/cluster state/terraform.tfstate | awk '{ print $2 }' | cut -d\" -f2)
+export REGION=us-west-2
+```
+
+Execute the following commands to create and attach an EBS volume to each Kubelet.
+
+```bash
+eval $(maws login 110465657741_Mesosphere-PowerUser)
+aws --region="$REGION" ec2 describe-instances |  jq --raw-output ".Reservations[].Instances[] | select((.Tags | length) > 0) | select(.Tags[].Value | test(\"$CLUSTER-worker\")) | select(.State.Name | test(\"running\")) | [.InstanceId, .Placement.AvailabilityZone] | \"\(.[0]) \(.[1])\"" | while read -r instance zone; do
+  echo "$instance" "$zone"
+  volume=$(aws --region="$REGION" ec2 create-volume --size=100  --availability-zone="$zone" --tag-specifications="ResourceType=volume,Tags=[{Key=string,Value=$CLUSTER}]" | jq --raw-output .VolumeId)
+  sleep 10
+  aws --region=$REGION ec2 attach-volume --device=/dev/xvdc --instance-id="$instance" --volume-id="$volume"
+done
+```
+
+To be able to use Portworx persistent storage on your Kubernetes cluster, you need to download the Portworx specs using the following command:
+
+```bash
+ wget -O portworx.yaml 'https://install.portworx.com/2.3?mc=false&kbver=1.16.4&b=true&c=cluster1&stork=true&lh=true&st=k8s'
+```
+
+Then, you need to edit the `portworx.yaml` file to modify the type of the Kubernetes Service from `NodePort` to `LoadBalancer`:
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: px-lighthouse
+  namespace: kube-system
+  labels:
+    tier: px-web-console
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: https
+  selector:
+    tier: px-web-console
+```
+
+Now, you can deploy Portworx using the command below:
+
+```bash
+kubectl apply -f portworx.yaml
+```
+
+Run the following command until all the pods are running:
+
+```bash
+kubectl -n kube-system get pods
+```
+
+You need to wait for a few minutes while the Load Balancer is created on AWS and the name resolution in place.
+
+```bash
+until nslookup $(kubectl -n kube-system get svc px-lighthouse --output jsonpath={.status.loadBalancer.ingress[*].hostname})
+do
+  sleep 1
+done
+echo "Open http://$(kubectl -n kube-system get svc px-lighthouse --output jsonpath={.status.loadBalancer.ingress[*].hostname}) to access the Portworx UI"
+```
+
+Access the Portworx UI using the URL indicated and login with the user `admin` and the password `Password1`.
+
+![Portworx UI](images/portworx.png)
+
+Create the Kubernetes StorageClass using the following command:
+
+```bash
+cat <<EOF | kubectl create -f -
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+   name: portworx-sc
+provisioner: kubernetes.io/portworx-volume
+parameters:
+  repl: "2"
+EOF
+```
+
 ### Github
 
 For the 2 github repos below:
@@ -252,7 +342,7 @@ kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master
 Deploy KUDO Cassandra:
 
 ```
-kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true --operator-version=0.1.2
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true -p NODE_STORAGE_CLASS=portworx-sc --operator-version=0.1.2
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -270,6 +360,20 @@ Plan(s) for "cassandra" in namespace "default":
     └── Plan deploy (serial strategy) [IN_PROGRESS]
         └── Phase nodes (parallel strategy) [IN_PROGRESS]
             └── Step node [IN_PROGRESS]
+```
+
+Check that the `pvc` for Cassandra are using the Portworx Storage Class:
+
+```
+kubectl get pvc | grep cassandra
+```
+
+The output should be similar to:
+
+```
+var-lib-cassandra-cassandra-node-0   Bound    pvc-a326005f-c6d1-4e24-835a-34dcc27dc932   20Gi       RWO            portworx-sc            62s
+var-lib-cassandra-cassandra-node-1   Bound    pvc-faae2a42-966f-4026-a11d-7de34440aaa7   20Gi       RWO            portworx-sc            33s
+var-lib-cassandra-cassandra-node-2   Bound    pvc-a9abb0d4-2ed5-4366-aefd-b98972a03b84   20Gi       RWO            portworx-sc            3s
 ```
 
 ### Minio
@@ -489,6 +593,12 @@ You need to update this file to replace `<your Docker id>` and `<your Github id>
 
 As you can see in the file, we are using `for` loops to define the different variables, tasks and actions for the 3 micro services.
 
+Introduce a bug in one of the micro service to show how to troubleshoot an issue using Kibana:
+
+```
+cp map/map.py.broken map/map.py
+```
+
 Now, to trigger the build and deploy tasks, you need to update the 3 files below:
 
 ```
@@ -562,6 +672,49 @@ You can run the following command to determine the URL of the web app:
 echo https://${traefik_host}/ksphere-demo-map
 ```
 
+The map is displayed, but there is no icons !
+
+![Web app broken](images/web-app-v1.png)
+
+### Troubleshoot the issue
+
+Open Kibana, click on the `Discover` button and search for `kubernetes.labels.app: "ksphere-demo-map"`.
+
+![Kibana](images/kibana.png)
+
+The most interesting error message is `"unconfigured table image"`.
+
+The name of the Cassandra table is `images`, not `image`.
+
+Let's fix this issue.
+
+Run the following command to use the good version and to commit and push the modification:
+
+```
+cp map/map.py.ok map/map.py
+git commit -a -m "fix the Cassandra table name"
+git push
+```
+
+If you to go to the Tekton UI, you'll see that only the `map` micro service is being rebuild:
+
+![Tekton PipelineRuns](images/tekton-pipelineruns-map.png)
+
+When it has completed, merge the corresponding Pull Request in your fork of the `ksphere-demo-gitops` repo.
+
+You can merge it from the Github UI or using the commands below:
+
+```
+curl -XGET -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_USERNAME}/ksphere-demo-gitops/pulls | jq --raw-output '.[].url' | while read pr; do
+  curl -XPUT -H "Authorization: token ${GITHUB_TOKEN}" $pr/merge
+  sleep 5
+done
+```
+
+If you go to the Argo CD UI and you'll see that the corresponding app is being synced.
+
+When it has completed, refresh the web app.
+
 The icons corresponding to the pictures of the sunset are displayed in the map with the number of views indicated:
 
 ![Web app v1](images/web-app-v1.png)
@@ -584,9 +737,7 @@ git commit -a -m "v2"
 git push
 ```
 
-If you to go to the Tekton UI, you'll see that only the `map` micro service is being rebuild:
-
-![Tekton PipelineRuns](images/tekton-pipelineruns-map.png)
+If you to go to the Tekton UI, you'll see that again only the `map` micro service is being rebuild.
 
 When it has completed, merge the corresponding Pull Request in your fork of the `ksphere-demo-gitops` repo.
 
@@ -606,6 +757,289 @@ When it has completed, refresh the web app:
 ![Web app v2](images/web-app-v2.png)
 
 Far better, no ?
+
+### Data protection
+
+Run the following command to use the Cassandra CLI:
+
+```
+kubectl exec -it cassandra-node-0 -- cqlsh cassandra-node-0.cassandra-svc.default.svc.cluster.local
+```
+
+Display the rows using the following commands:
+
+```
+cqlsh> use images;
+cqlsh:images> SELECT * FROM images;
+
+ image           | latitude  | longitude  | url                                                                                                                                                                                              | views
+-----------------+-----------+------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------
+ 49355853798.jpg |  41.44241 |    2.16637 |       http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49355853798.jpg?AWSAccessKeyId=minio&Signature=hFIMFzwCBcL9PJ3oXCSflYSbmVc%3D&Expires=1580312859 |    31
+ 49355691038.jpg |  35.66047 |  139.72913 |       http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49355691038.jpg?AWSAccessKeyId=minio&Signature=z9ac2ukn3MB0mgJF66TNiazrdRw%3D&Expires=1580312864 |   255
+ 49366123721.jpg |  52.41553 |   -1.40883 |       http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49366123721.jpg?AWSAccessKeyId=minio&Signature=VdQEYafNM0UbMoOO9dV4QFv6288%3D&Expires=1580312808 |    35
+ 49395760826.jpg |  40.67342 |   14.77358 |     http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49395760826.jpg?AWSAccessKeyId=minio&Signature=ebR0hoHxt%2BJ0HLf7AWwpHFmWQ04%3D&Expires=1580312682 |    55
+ 49361465157.jpg |  13.73061 |  100.70907 |       http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49361465157.jpg?AWSAccessKeyId=minio&Signature=R1ocQdM9tDzSIyeugQMHskzt2CQ%3D&Expires=1580312830 |    78
+ 49381057011.jpg |  21.20323 |   94.88545 |       http://a09e1bfa4396d4ddbb35ce61226427cf-188833490.us-west-2.elb.amazonaws.com:9000/images/49381057011.jpg?AWSAccessKeyId=minio&Signature=0HGyA7PlbT9fYKQ5anmiS5zlQ64%3D&Expires=1580312747 |    33
+ ...
+
+---MORE---
+cqlsh:images> SELECT COUNT(*) FROM images;
+
+ count
+-------
+  1235
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:images> quit
+```
+
+Create a rule to flush the data to the disk before initiating the snapshot creation.
+
+```bash
+cat <<EOF | kubectl create -f -
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: Rule
+metadata:
+  name: px-cassandra-rule
+spec:
+  - podSelector:
+      app: cassandra
+    actions:
+    - type: command
+      value: nodetool flush
+EOF
+```
+
+Take a 3DSnap task to snapshot all the PVCs associated with the Cassandra pods.
+
+```bash
+cat <<EOF | kubectl create -f -
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: GroupVolumeSnapshot
+metadata:
+  name: cassandra-group-snapshot
+spec:
+  preExecRule: px-cassandra-rule
+  pvcSelector:
+    matchLabels:
+      app: cassandra
+EOF
+```
+
+Check the status of the snapshots:
+
+```
+kubectl describe groupvolumesnapshot cassandra-group-snapshot | grep "Volume Snapshot Name"
+```
+
+The output should be similar to below:
+
+```
+Name:         cassandra-group-snapshot
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+API Version:  stork.libopenstorage.org/v1alpha1
+Kind:         GroupVolumeSnapshot
+Metadata:
+  Creation Timestamp:  2020-01-23T13:21:02Z
+  Generation:          5
+  Resource Version:    59413
+  Self Link:           /apis/stork.libopenstorage.org/v1alpha1/namespaces/default/groupvolumesnapshots/cassandra-group-snapshot
+  UID:                 793eb75a-34c0-494d-aff2-7168830eef3a
+Spec:
+  Max Retries:     0
+  Options:         <nil>
+  Post Exec Rule:  
+  Pre Exec Rule:   px-cassandra-rule
+  Pvc Selector:
+    Match Labels:
+      App:             cassandra
+  Restore Namespaces:  <nil>
+Status:
+  Num Retries:  0
+  Stage:        Final
+  Status:       Successful
+  Volume Snapshots:
+    Conditions:
+      Last Transition Time:  2020-01-23T13:21:03Z
+      Message:               Snapshot created successfully and it is ready
+      Reason:                
+      Status:                True
+      Type:                  Ready
+    Data Source:
+      Portworx Volume:
+        Snapshot Id:         44343427105483517
+        Snapshot Task ID:    
+        Snapshot Type:       local
+        Volume Provisioner:  
+    Parent Volume ID:        175734532816841435
+    Task ID:                 
+    Volume Snapshot Name:    cassandra-group-snapshot-var-lib-cassandra-cassandra-node-2-793eb75a-34c0-494d-aff2-7168830eef3a
+    Conditions:
+      Last Transition Time:  2020-01-23T13:21:03Z
+      Message:               Snapshot created successfully and it is ready
+      Reason:                
+      Status:                True
+      Type:                  Ready
+    Data Source:
+      Portworx Volume:
+        Snapshot Id:         256200010142091776
+        Snapshot Task ID:    
+        Snapshot Type:       local
+        Volume Provisioner:  
+    Parent Volume ID:        721202821319161531
+    Task ID:                 
+    Volume Snapshot Name:    cassandra-group-snapshot-var-lib-cassandra-cassandra-node-0-793eb75a-34c0-494d-aff2-7168830eef3a
+    Conditions:
+      Last Transition Time:  2020-01-23T13:21:03Z
+      Message:               Snapshot created successfully and it is ready
+      Reason:                
+      Status:                True
+      Type:                  Ready
+    Data Source:
+      Portworx Volume:
+        Snapshot Id:         1117112754226648118
+        Snapshot Task ID:    
+        Snapshot Type:       local
+        Volume Provisioner:  
+    Parent Volume ID:        902623080101796128
+    Task ID:                 
+    Volume Snapshot Name:    cassandra-group-snapshot-var-lib-cassandra-cassandra-node-1-793eb75a-34c0-494d-aff2-7168830eef3a
+Events:                      <none>
+```
+
+Go back to the Cassandra CLI and delete all the rows of the `images` table:
+
+```
+kubectl exec -it cassandra-node-0 -- cqlsh cassandra-node-0.cassandra-svc.default.svc.cluster.local
+
+cqlsh> use images;
+cqlsh:images> TRUNCATE images;
+cqlsh:images> SELECT COUNT(*) FROM images;
+
+ count
+-------
+    12
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:images> quit
+```
+
+Refresh the web app.
+
+You should only see a few remaining pictures.
+
+Remove the Cassandra instance:
+
+```
+kubectl delete instances.kudo.dev cassandra
+```
+
+Delete the Cassandra pvcs:
+
+```
+kubectl delete pvc var-lib-cassandra-cassandra-node-0
+kubectl delete pvc var-lib-cassandra-cassandra-node-1
+kubectl delete pvc var-lib-cassandra-cassandra-node-2
+```
+
+Restore the pvcs from the snapshots
+
+```bash
+for i in 0 1 2; do
+  cat <<EOF | kubectl create -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-lib-cassandra-cassandra-node-$i
+  annotations:
+    snapshot.alpha.kubernetes.io/snapshot: $(kubectl get groupvolumesnapshot cassandra-group-snapshot -o jsonpath='{range .status.volumeSnapshots[*]}{.VolumeSnapshotName}{"\n"}{end}' | grep node-$i)
+spec:
+  accessModes:
+     - ReadWriteOnce
+  storageClassName: stork-snapshot-sc
+  resources:
+    requests:
+      storage: 5Gi
+EOF
+done
+```
+
+Check that the pvcs have been correctly restored:
+
+```
+kubectl get pvc | grep cassandra
+```
+
+The output should be similare to below:
+
+```
+var-lib-cassandra-cassandra-node-0   Bound    pvc-44ab3aab-795d-4263-80dc-644fa753df10   5Gi        RWO            stork-snapshot-sc      20s
+var-lib-cassandra-cassandra-node-1   Bound    pvc-8fa8323f-e5c4-4b80-b0a8-d90492d014f5   5Gi        RWO            stork-snapshot-sc      18s
+var-lib-cassandra-cassandra-node-2   Bound    pvc-fe5712a9-9feb-4a1c-8cb7-e79bb91f2997   5Gi        RWO            stork-snapshot-sc      16s
+```
+
+Redeploy the Cassandra instance using these pvcs:
+
+```
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true -p NODE_STORAGE_CLASS=stork-snapshot-sc --operator-version=0.1.2
+```
+
+You can use the following command to follow the progress of the deployment:
+
+```
+kubectl kudo plan status --instance=cassandra
+```
+
+Wait until the `deploy` plan is `COMPLETE` as follow:
+
+```
+Plan(s) for "cassandra" in namespace "default":
+.
+└── cassandra (Operator-Version: "cassandra-0.1.2" Active-Plan: "deploy")
+    └── Plan deploy (serial strategy) [IN_PROGRESS]
+        └── Phase nodes (parallel strategy) [IN_PROGRESS]
+            └── Step node [IN_PROGRESS]
+```
+
+Go back to the Cassandra CLI and delete all the rows of the `images` table:
+
+```
+kubectl exec -it cassandra-node-0 -- cqlsh cassandra-node-0.cassandra-svc.default.svc.cluster.local
+
+cqlsh> use images;
+cqlsh:images> SELECT COUNT(*) FROM images;
+
+ count
+-------
+  1235
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:images> quit
+```
+
+Delete the Pods of the `map` micro service to make it reconnects correctly to the Cassandra instance:
+
+```
+kubectl delete pods -l app=ksphere-demo-map
+```
+
+Refresh the web app.
+
+You should see all the pictures again.
 
 ### Monitoring
 
