@@ -674,7 +674,7 @@ echo https://${traefik_host}/ksphere-demo-map
 
 The map is displayed, but there is no icons !
 
-![Web app broken](images/web-app-v1.png)
+![Web app broken](images/web-app-broken.png)
 
 ### Troubleshoot the issue
 
