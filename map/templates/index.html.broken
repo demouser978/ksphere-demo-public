@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Display images on map</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript">
+      var fetchImages = function() {
+        $.ajax({
+          url: "/ksphere-demo-map/getimage",
+          success: function(result) {
+            console.log(result);
+            var markers = [];
+            var locations = {};
+            result.forEach(function(entry) {
+              if(! locations[entry['latitude'] + '-' + entry['longitude']]) {
+                var location = {lat: entry['latitude'], lng: entry['longitude']};
+                var views = entry['views'];
+                if(views > 99) {
+                  views = "99+";
+                } else {
+                  views = views.toString();
+                }
+                var contentString = '<div id="content"><div class="image"><a href="' + entry['url'] + '" /><img src="' + entry['url'] + '" /></a></div>';
+
+                var infowindow = new google.maps.InfoWindow({
+                  content: contentString
+                });
+
+                var marker = new google.maps.Marker({map: map, position: location, label: views});
+                marker.addListener('click', function(evt) {
+                  console.log(infowindow.getContent());
+                  if (! infowindow.getContent().match(/<div class="location">/)) {
+                    var latlng = {lat: evt.latLng.lat(), lng: evt.latLng.lng()};
+                    var geocoder = new google.maps.Geocoder;
+
+                    geocoder.geocode({'location': latlng}, function(results, status) {
+                      if (status === 'OK') {
+                        if (results[0]) {
+                          infowindow.setContent(infowindow.getContent() + '<div class="location">' + results[0].formatted_address + '</div></div>');
+                        }
+                        else {
+                          infowindow.setContent(infowindow.getContent() + '</div>');
+                        }
+                      } else {
+                        infowindow.setContent(infowindow.getContent() + '</div>');
+                      }
+                    });
+                  }
+                  infowindow.open(map, marker);
+                });
+                markers.push(marker);
+              }
+              locations[entry['latitude'] + '-' + entry['longitude']] = true;
+            });
+          },
+          complete: function(result) {
+            //setTimeout(function(){ fetchImages(); }, 5000);
+          }
+        });
+      }
+
+      fetchImages();
+    </script>
+    <style>
+      #map {
+        height: 100%;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      .image {
+        margin: 2em;
+      }
+
+      .image img {
+        width: 100%;
+      }
+
+      .location {
+        margin: 2em;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+
+      function CenterControl(controlDiv, map) {
+        // Set CSS for the control border.
+        var controlUI = document.createElement('div');
+        controlUI.style.backgroundColor = '#fff';
+        controlUI.style.border = '2px solid #fff';
+        controlUI.style.borderRadius = '3px';
+        controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
+        controlUI.style.cursor = 'pointer';
+        controlUI.style.marginBottom = '22px';
+        controlUI.style.textAlign = 'center';
+        controlUI.title = 'Click to refresh';
+        controlDiv.appendChild(controlUI);
+
+        // Set CSS for the control interior.
+        var controlText = document.createElement('div');
+        controlText.style.color = 'rgb(25,25,25)';
+        controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
+        controlText.style.fontSize = '16px';
+        controlText.style.lineHeight = '38px';
+        controlText.style.paddingLeft = '5px';
+        controlText.style.paddingRight = '5px';
+        controlText.innerHTML = 'Refresh';
+        controlUI.appendChild(controlText);
+
+        // Setup the click event listeners: simply set the map to Chicago.
+        controlUI.addEventListener('click', function() {
+          fetchImages();
+        });
+      }
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 25, lng: 9},
+          zoom: 3
+        });
+
+        var centerControlDiv = document.createElement('div');
+        var centerControl = new CenterControl(centerControlDiv, map);
+
+        centerControlDiv.index = 1;
+        map.controls[google.maps.ControlPosition.RIGHT_TOP].push(centerControlDiv);
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMhVZZ7BFBvEWcL3AKV5kRl0MbTlliy_M&libraries=visualization&callback=initMap"
+    async defer></script>
+  </body>
+</html>

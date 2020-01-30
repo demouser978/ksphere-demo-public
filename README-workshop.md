@@ -47,7 +47,7 @@ sudo yum install nc jq
 
 ### Client tools
 
-Download the Dispatch CLI version `0.4.4` (for either Linux or Mac) from the following page:
+Download the Dispatch CLI version `0.5.1` (for either Linux or Mac) from the following page:
 
 [https://github.com/mesosphere/dispatch/releases](https://github.com/mesosphere/dispatch/releases)
 
@@ -523,19 +523,35 @@ apps:: [ "map", "flickr", "photos" ]
 for _, app in apps {
   resource "docker-image-\(app)": {
     type: "image"
-    param url: "<your Docker id>/ksphere-demo-\(app):$(context.build.name)"
+    param url: "djannot/ksphere-demo-\(app):$(context.build.name)"
   }
 }
 
 resource "gitops-git": {
   type: "git"
-  param url: "https://github.com/<your Github id>/ksphere-demo-gitops"
+  param url: "https://github.com/djannot/ksphere-demo-gitops"
+}
+
+task "test-photos": {
+  inputs: ["src-git"]
+
+  steps: [
+    {
+      name: "test"
+      image: "python:3"
+      command: ["python3", "test.py"]
+      workingDir: "/workspace/src-git/photos"
+    }
+  ]
 }
 
 for _, app in apps {
   task "build-\(app)": {
     inputs: ["src-git"]
     outputs: ["docker-image-\(app)"]
+    if app == "photos" {
+      deps: ["test-photos"]
+    }
 
     steps: [
       {
@@ -544,14 +560,8 @@ for _, app in apps {
         args: [
           "--destination=$(outputs.resources.docker-image-\(app).url)",
           "--context=/workspace/src-git/\(app)",
-          "--oci-layout-path=/builder/home/image-outputs/docker-image-\(app)",
+          "--oci-layout-path=/workspace/output/docker-image-\(app)",
           "--dockerfile=/workspace/src-git/\(app)/Dockerfile"
-        ],
-        env: [
-          {
-            name: "DOCKER_CONFIG",
-            value: "/builder/home/.docker"
-          }
         ]
       }
     ]
@@ -580,6 +590,16 @@ for _, app in apps {
 
 actions: [
   {
+    tasks: ["test-photos"]
+    on: {
+        push: {
+            branches: ["master"]
+            paths: ["photos/**"]
+        }
+    }
+  }
+] + [
+  {
     tasks: ["build-\(app)", "deploy-\(app)"]
     on push: {
       branches: ["master"]
@@ -592,6 +612,8 @@ actions: [
 You need to update this file to replace `<your Docker id>` and `<your Github id>` by the corresponding information.
 
 As you can see in the file, we are using `for` loops to define the different variables, tasks and actions for the 3 micro services.
+
+There is also a test task, but only for the `photos` micro service.
 
 Introduce a bug in one of the micro service to show how to troubleshoot an issue using Kibana:
 

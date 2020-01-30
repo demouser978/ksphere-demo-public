@@ -112,6 +112,8 @@ until [ $(kubectl get pods -l app=minio -o jsonpath='{range .items[*].status.con
   sleep 1
 done
 
+sleep 10
+
 mc config host add minio http://$minio_host:9000 minio minio123
 mc admin config set minio notify_kafka:1 brokers="kafka-kafka-0.kafka-svc:9092" topic="minio"
 mc admin service restart minio
