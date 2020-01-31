@@ -139,7 +139,7 @@ ip-10-0-195-208.us-west-2.compute.internal   Ready    master   15h   v1.16.4
 
 ### Github
 
-For the 2 github repos below:
+Fork the 2 github repos below:
 
 - [https://github.com/mesosphere/ksphere-demo](https://github.com/mesosphere/ksphere-demo)
 - [https://github.com/mesosphere/ksphere-demo-gitops](https://github.com/mesosphere/ksphere-demo-gitops)

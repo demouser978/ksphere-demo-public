@@ -229,7 +229,7 @@ EOF
 
 ### Github
 
-For the 2 github repos below:
+Fork the 2 github repos below:
 
 - [https://github.com/mesosphere/ksphere-demo](https://github.com/mesosphere/ksphere-demo)
 - [https://github.com/mesosphere/ksphere-demo-gitops](https://github.com/mesosphere/ksphere-demo-gitops)
