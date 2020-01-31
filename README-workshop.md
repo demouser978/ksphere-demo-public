@@ -82,6 +82,16 @@ sudo mv kubectl-kudo_0.10.1_linux_x86_64 /usr/local/bin/kubectl-kudo
 chmod +x /usr/local/bin/kubectl-kudo
 ```
 
+On both Mac and Linux, make sure the content of the `~/.kudo/repository/repositories.yaml` file is the following:
+
+```
+context: community
+repoVersion: v1
+repositories:
+- name: community
+  url: https://kudo-repository.storage.googleapis.com/0.10.0
+```
+
 Install the Minio CLI (on Mac):
 
 ```
