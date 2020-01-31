@@ -52,7 +52,7 @@ fi
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 kubectl kudo init --wait
 
-kubectl kudo install zookeeper --instance=zk --operator-version=0.2.0
+kubectl kudo install zookeeper --instance=zk --operator-version=0.3.0
 
 until [ $(kubectl get pods --selector=app=zookeeper --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
   sleep 1

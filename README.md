@@ -77,8 +77,8 @@ Install the KUDO CLI (on Linux):
 
 ```
 rm -f ~/.kudo/repository/repositories.yaml
-wget https://github.com/kudobuilder/kudo/releases/download/v0.10.0/kubectl-kudo_0.10.0_linux_x86_64
-sudo mv kubectl-kudo_0.10.0_linux_x86_64 /usr/local/bin/kubectl-kudo
+wget https://github.com/kudobuilder/kudo/releases/download/v0.10.1/kubectl-kudo_0.10.1_linux_x86_64
+sudo mv kubectl-kudo_0.10.1_linux_x86_64 /usr/local/bin/kubectl-kudo
 chmod +x /usr/local/bin/kubectl-kudo
 ```
 
@@ -172,7 +172,7 @@ Uninstall the current version of KUDO deployed on Konvoy:
 kubectl kudo init --dry-run -o yaml | kubectl delete -f -
 ```
 
-Install KUDO 0.10.0:
+Install KUDO 0.10.1:
 
 ```
 kubectl kudo init --wait
@@ -183,7 +183,7 @@ kubectl kudo init --wait
 Deploy KUDO Zookeeper:
 
 ```
-kubectl kudo install zookeeper --instance=zk --operator-version=0.2.0
+kubectl kudo install zookeeper --instance=zk --operator-version=0.3.0
 ```
 
 You can use the following command to follow the progress of the deployment:
@@ -197,7 +197,7 @@ Wait until the `deploy` plan is `COMPLETE` as follow:
 ```
 Plan(s) for "zk" in namespace "default":
 .
-└── zk (Operator-Version: "zookeeper-0.2.0" Active-Plan: "deploy")
+└── zk (Operator-Version: "zookeeper-0.3.0" Active-Plan: "deploy")
     ├── Plan deploy (serial strategy) [COMPLETE]
     │   ├── Phase zookeeper (parallel strategy) [COMPLETE]
     │   │   └── Step deploy [COMPLETE]
