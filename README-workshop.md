@@ -227,6 +227,32 @@ parameters:
 EOF
 ```
 
+Create a ServiceMonitor to send store the metrics in Prometheus:
+
+```bash
+cat <<EOF | kubectl create -f -
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: kube-system
+  name: portworx-prometheus-sm
+  labels:
+    name: portworx-prometheus-sm
+    release: prometheus-kubeaddons
+spec:
+  selector:
+    matchLabels:
+      name: portworx
+  namespaceSelector:
+    any: true
+  endpoints:
+    - port: px-api
+      targetPort: 9001
+    - port: px-kvdb
+      targetPort: 9019
+EOF
+```
+
 ### Github
 
 Fork the 2 github repos below:
@@ -1100,6 +1126,22 @@ Follow the same steps to import the following files:
 - grafana-cloudbuild.json
 
 ![Grafana Cloudbuild](images/grafana-cloudbuild.png)
+
+- grafana-portworx-cluster.json
+
+![Grafana Portworx Cluster](images/grafana-portworx-cluster.png)
+
+- grafana-portworx-etcd.json
+
+![Grafana Portworx Etcd](images/grafana-portworx-etcd.png)
+
+- grafana-portworx-node.json
+
+![Grafana Portworx Node](images/grafana-portworx-node.png)
+
+- grafana-portworx-volume.json
+
+![Grafana Portworx Volume](images/grafana-portworx-volume.png)
 
 ## Cleanup
 
