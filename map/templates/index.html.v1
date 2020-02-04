@@ -10,7 +10,7 @@
     <script type="text/javascript">
       var fetchImages = function() {
         $.ajax({
-          url: "/ksphere-demo-map/getimages",
+          url: "getimages",
           success: function(result) {
             console.log(result);
             var markers = [];
