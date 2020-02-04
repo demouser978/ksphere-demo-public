@@ -9,13 +9,13 @@ apps:: [ "map", "flickr", "photos" ]
 for _, app in apps {
   resource "docker-image-\(app)": {
     type: "image"
-    param url: "<your Docker id>/ksphere-demo-\(app):$(context.build.name)"
+    param url: "vjone/ksphere-demo-\(app):$(context.build.name)"
   }
 }
 
 resource "gitops-git": {
   type: "git"
-  param url: "https://github.com/<your Github id>/ksphere-demo-gitops"
+  param url: "https://github.com/vjone/ksphere-demo-gitops"
 }
 
 task "test-photos": {
