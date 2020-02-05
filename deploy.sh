@@ -129,6 +129,12 @@ git commit -a -m "Updating the external Minio endpoint"
 git push
 cd "${BASEDIR}" || exit 1
 
+# Create map namespace for the map front-end microservice to exist in so that the namespace can be labelled for istio so only the map pod gets injected 
+# with the envoy sidecar container for istio
+kubectl create namespace map
+kubectl label ns map istio-injection=enabled
+kubectl label ns map ca.istio.io/override="true"
+
 # Dispatch
 dispatch init --set global.prometheus.enabled=true --set global.prometheus.release=prometheus-kubeaddons --watch-namespace=dispatch
 dispatch serviceaccount create dispatch-sa
