@@ -25,4 +25,4 @@ for photo in flickr.walk(tag_mode='all', tags=os.environ['FLICKR_TAG'], extras='
         except ClientError as e:
             logging.error(e)
 
-# Trigger build and deploy 2
+# Trigger build and deploy 3
