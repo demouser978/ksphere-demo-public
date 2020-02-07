@@ -4,87 +4,87 @@ BASEDIR="$PWD"
 CURRENTSUB=${BASEDIR##*/}
 KSPHERE_DEMO_GITOPS_DIR='../ksphere-demo-gitops'
 
-## Check if the executable location is sane.
-#if [ "$CURRENTSUB" != "ksphere-demo" ]; then
-#  echo "Execute 'deploy.sh' only from ksphere-demo subdir!. Exiting."
-#  exit 1
-#fi
-#
-#if [ ! -d "$KSPHERE_DEMO_GITOPS_DIR" ]; then
-#  echo "Directory $KSPHERE_DEMO_GITOPS_DIR DOES NOT exists. Exiting."
-#  exit 1
-#fi
-#
-## Check if remote origin is bound via SSH
-#if [[ "$(git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
-#  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo' repo with HTTPS."
-#  exit 1
-#fi
-#
-#if [[ "$(cd $KSPHERE_DEMO_GITOPS_DIR && git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
-#  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo-gitops' repo with HTTPS."
-#  exit 1
-#fi
-#
-##Check if ENVs are properly set.
-#if [[ -z "${GITHUB_USERNAME}" ]]; then
-#  echo "ENV:GITHUB_USERNAME is not set, exiting. Please see documentation."
-#  exit 1
-#else
-#  if [[ -z "${GITHUB_TOKEN}" ]]; then
-#    echo "ENV:GITHUB_TOKEN is not set, exiting. Please see documentation."
-#    exit 1
-#  else
-#    if [[ -z "${DOCKER_USERNAME}" ]]; then
-#      echo "ENV:DOCKER_USERNAME is not set, exiting. Please see documentation."
-#      exit 1
-#    else
-#      if [[ -z "${DOCKER_PASSWORD}" ]]; then
-#        echo "ENV:DOCKER_PASSWORD is not set, exiting. Please see documentation."
-#        exit 1
-#      else
-#        echo "Github '${GITHUB_USERNAME}' and Docker '${DOCKER_USERNAME}' credentials found."
-#      fi
-#    fi
-#  fi
-#fi
-#
-#kubectl kudo init --dry-run -o yaml | kubectl delete -f -
-#kubectl kudo init --wait
-#
-#kubectl kudo install zookeeper --instance=zk --operator-version=0.3.0
-#
-#until [ $(kubectl get pods --selector=app=zookeeper --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
-#  sleep 1
-#  kubectl get pods --selector=app=zookeeper
-#done
-#
-#kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --operator-version=1.2.0
-#
-#until [ $(kubectl get pods --selector=app=kafka --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
-#  sleep 1
-#  kubectl get pods --selector=app=kafka
-#done
-#
-#kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/service-monitor.yaml
-#
-## Cassandra
-#kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true --operator-version=0.1.2
-#
-#until [ $(kubectl get pods --selector=app=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
-#  sleep 1
-#  kubectl get pods --selector=app=cassandra
-#done
-#
-## Install the Minio operator
-#kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
-## Deploy the minio cluster
-#kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/examples/minioinstance-with-external-service.yaml"
-#
-#until [ $(kubectl get pods --selector=app=minio --field-selector=status.phase=Running | grep -v NAME -c) -eq 4 ]; do
-#  sleep 1
-#  kubectl get pods --selector=app=minio
-#done
+# Check if the executable location is sane.
+if [ "$CURRENTSUB" != "ksphere-demo" ]; then
+  echo "Execute 'deploy.sh' only from ksphere-demo subdir!. Exiting."
+  exit 1
+fi
+
+if [ ! -d "$KSPHERE_DEMO_GITOPS_DIR" ]; then
+  echo "Directory $KSPHERE_DEMO_GITOPS_DIR DOES NOT exists. Exiting."
+  exit 1
+fi
+
+# Check if remote origin is bound via SSH
+if [[ "$(git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
+  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo' repo with HTTPS."
+  exit 1
+fi
+
+if [[ "$(cd $KSPHERE_DEMO_GITOPS_DIR && git config --get remote.origin.url)" =~ ^git@github\.com ]]; then
+  echo "GITHUB Tokens only work with HTTPS not SSH origins. Please clone the 'ksphere-demo-gitops' repo with HTTPS."
+  exit 1
+fi
+
+#Check if ENVs are properly set.
+if [[ -z "${GITHUB_USERNAME}" ]]; then
+  echo "ENV:GITHUB_USERNAME is not set, exiting. Please see documentation."
+  exit 1
+else
+  if [[ -z "${GITHUB_TOKEN}" ]]; then
+    echo "ENV:GITHUB_TOKEN is not set, exiting. Please see documentation."
+    exit 1
+  else
+    if [[ -z "${DOCKER_USERNAME}" ]]; then
+      echo "ENV:DOCKER_USERNAME is not set, exiting. Please see documentation."
+      exit 1
+    else
+      if [[ -z "${DOCKER_PASSWORD}" ]]; then
+        echo "ENV:DOCKER_PASSWORD is not set, exiting. Please see documentation."
+        exit 1
+      else
+        echo "Github '${GITHUB_USERNAME}' and Docker '${DOCKER_USERNAME}' credentials found."
+      fi
+    fi
+  fi
+fi
+
+kubectl kudo init --dry-run -o yaml | kubectl delete -f -
+kubectl kudo init --wait
+
+kubectl kudo install zookeeper --instance=zk --operator-version=0.3.0
+
+until [ $(kubectl get pods --selector=app=zookeeper --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+  sleep 1
+  kubectl get pods --selector=app=zookeeper
+done
+
+kubectl kudo install kafka --instance=kafka -p ZOOKEEPER_URI=zk-zookeeper-0.zk-hs:2181,zk-zookeeper-1.zk-hs:2181,zk-zookeeper-2.zk-hs:2181 --operator-version=1.2.0
+
+until [ $(kubectl get pods --selector=app=kafka --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+  sleep 1
+  kubectl get pods --selector=app=kafka
+done
+
+kubectl create -f https://raw.githubusercontent.com/kudobuilder/operators/master/repository/kafka/docs/v1.1/resources/service-monitor.yaml
+
+# Cassandra
+kubectl kudo install cassandra --instance=cassandra -p NODE_CPUS=2000m -p NODE_MEM=2048 -p PROMETHEUS_EXPORTER_ENABLED=true --operator-version=0.1.2
+
+until [ $(kubectl get pods --selector=app=cassandra --field-selector=status.phase=Running | grep -v NAME -c) -eq 3 ]; do
+  sleep 1
+  kubectl get pods --selector=app=cassandra
+done
+
+# Install the Minio operator
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/minio-operator.yaml"
+# Deploy the minio cluster
+kubectl create -f "https://raw.githubusercontent.com/minio/minio-operator/master/examples/minioinstance-with-external-service.yaml"
+
+until [ $(kubectl get pods --selector=app=minio --field-selector=status.phase=Running | grep -v NAME -c) -eq 4 ]; do
+  sleep 1
+  kubectl get pods --selector=app=minio
+done
 
 kubectl get svc minio-service -o yaml | sed 's/ClusterIP/LoadBalancer/' > minio-service.yaml
 kubectl replace -f minio-service.yaml
