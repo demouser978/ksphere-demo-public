@@ -48,6 +48,12 @@ for _, app in apps {
           "--context=/workspace/src-git/\(app)",
           "--oci-layout-path=/workspace/output/docker-image-\(app)",
           "--dockerfile=/workspace/src-git/\(app)/Dockerfile"
+        ],
+        env: [
+          {
+            name: "DOCKER_CONFIG"
+            value: "/tekton/home/.docker"
+          }
         ]
       }
     ]
